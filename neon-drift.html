@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Neon Drift</title>
+  <style>
+    :root {
+      --bg: #05060b;
+      --panel: rgba(8, 14, 25, 0.8);
+      --cyan: #31f9ff;
+      --magenta: #ff3ef4;
+      --lime: #8dff6a;
+      --warn: #ff5d6e;
+      --text: #daf6ff;
+      --muted: #7ca6b4;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 20% 20%, #10172a 0%, var(--bg) 45%, #030308 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: transparent;
+    }
+
+    .hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.7rem 1rem;
+      pointer-events: none;
+      z-index: 4;
+      font-weight: 600;
+      text-shadow: 0 0 8px rgba(49, 249, 255, 0.4);
+      flex-wrap: wrap;
+    }
+
+    .hud-item {
+      background: linear-gradient(180deg, rgba(17, 34, 50, 0.8), rgba(8, 16, 28, 0.65));
+      border: 1px solid rgba(49, 249, 255, 0.35);
+      border-radius: 10px;
+      padding: 0.4rem 0.7rem;
+      min-width: 6.5rem;
+      box-shadow: 0 0 18px rgba(49, 249, 255, 0.15), inset 0 0 12px rgba(49, 249, 255, 0.08);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: rgba(1, 2, 8, 0.64);
+      backdrop-filter: blur(4px);
+      z-index: 5;
+      padding: 1rem;
+    }
+
+    .panel {
+      width: min(36rem, 96vw);
+      background: var(--panel);
+      border: 1px solid rgba(255, 62, 244, 0.4);
+      border-radius: 16px;
+      padding: 1rem 1rem 1.25rem;
+      box-shadow: 0 0 28px rgba(255, 62, 244, 0.2), inset 0 0 18px rgba(49, 249, 255, 0.12);
+    }
+
+    h1 {
+      margin: 0.1rem 0 0.45rem;
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-shadow: 0 0 18px rgba(49, 249, 255, 0.8), 0 0 34px rgba(49, 249, 255, 0.45);
+    }
+
+    .subtitle {
+      margin: 0.1rem 0 0.9rem;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.35;
+    }
+
+    .controls {
+      margin: 0.45rem auto 1rem;
+      text-align: left;
+      max-width: 26rem;
+      color: #c2deeb;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .controls li {
+      margin-bottom: 0.25rem;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid rgba(49, 249, 255, 0.5);
+      background: linear-gradient(180deg, rgba(30, 48, 70, 0.9), rgba(16, 28, 42, 0.88));
+      color: var(--text);
+      font-size: 0.96rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0.56rem 1rem;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(49, 249, 255, 0.2), inset 0 0 10px rgba(49, 249, 255, 0.08);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 16px rgba(49, 249, 255, 0.3), inset 0 0 14px rgba(49, 249, 255, 0.12);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .mobile-controls {
+      position: fixed;
+      bottom: 0.6rem;
+      left: 0.6rem;
+      z-index: 6;
+      width: 10.5rem;
+      height: 10.5rem;
+      display: none;
+    }
+
+    .mobile-controls button {
+      position: absolute;
+      width: 3.2rem;
+      height: 3.2rem;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      padding: 0;
+      pointer-events: auto;
+      touch-action: none;
+      border-color: rgba(141, 255, 106, 0.52);
+      box-shadow: 0 0 14px rgba(141, 255, 106, 0.2), inset 0 0 12px rgba(141, 255, 106, 0.15);
+    }
+
+    .up { left: 3.65rem; top: 0; }
+    .left { left: 0; top: 3.65rem; }
+    .right { right: 0; top: 3.65rem; }
+    .down { left: 3.65rem; bottom: 0; }
+
+    .pause-chip {
+      position: fixed;
+      right: 0.8rem;
+      bottom: 0.8rem;
+      z-index: 6;
+      pointer-events: auto;
+      font-size: 0.82rem;
+      padding: 0.4rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.24);
+      background: rgba(11, 17, 28, 0.78);
+      color: #d1ecff;
+      display: none;
+    }
+
+    @media (max-width: 880px), (max-height: 560px) {
+      .mobile-controls,
+      .pause-chip {
+        display: block;
+      }
+
+      .hud {
+        padding: 0.5rem;
+        gap: 0.4rem;
+      }
+
+      .hud-item {
+        min-width: 5.25rem;
+        padding: 0.32rem 0.54rem;
+        font-size: 0.88rem;
+      }
+
+      .panel {
+        padding: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Neon Drift game canvas"></canvas>
+
+    <div class="hud">
+      <div class="hud-item" id="scoreView">Score: 0</div>
+      <div class="hud-item" id="healthView">Health: 100</div>
+      <div class="hud-item" id="bestView">Best: 0</div>
+    </div>
+
+    <div id="startOverlay" class="overlay">
+      <div class="panel">
+        <h1>Neon Drift</h1>
+        <p class="subtitle">Arcade survival in a neon void. Dodge hunters, grab score orbs, survive the storm.</p>
+        <ul class="controls">
+          <li><strong>Move:</strong> Arrow keys / WASD</li>
+          <li><strong>Pause:</strong> P key (or pause button)</li>
+          <li><strong>Goal:</strong> Survive and collect glowing orbs</li>
+          <li><strong>Warning:</strong> Enemies deal damage on contact</li>
+        </ul>
+        <div class="btn-row">
+          <button id="startBtn">Start Run</button>
+          <button id="muteBtn">Mute: Off</button>
+        </div>
+        <p class="muted">Tip: difficulty rises as your score climbs.</p>
+      </div>
+    </div>
+
+    <div id="gameOverOverlay" class="overlay hidden">
+      <div class="panel">
+        <h1>Run Over</h1>
+        <p id="finalScore" class="subtitle">Final Score: 0</p>
+        <div class="btn-row">
+          <button id="restartBtn">Restart</button>
+          <button id="muteBtn2">Mute: Off</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pauseOverlay" class="overlay hidden">
+      <div class="panel">
+        <h1>Paused</h1>
+        <p class="subtitle">Press P to resume drifting.</p>
+        <div class="btn-row">
+          <button id="resumeBtn">Resume</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mobileControls" class="mobile-controls" aria-hidden="true">
+      <button class="up" data-dir="up">▲</button>
+      <button class="left" data-dir="left">◀</button>
+      <button class="right" data-dir="right">▶</button>
+      <button class="down" data-dir="down">▼</button>
+    </div>
+
+    <button id="pauseChip" class="pause-chip">Pause (P)</button>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+      const scoreView = document.getElementById('scoreView');
+      const healthView = document.getElementById('healthView');
+      const bestView = document.getElementById('bestView');
+
+      const startOverlay = document.getElementById('startOverlay');
+      const gameOverOverlay = document.getElementById('gameOverOverlay');
+      const pauseOverlay = document.getElementById('pauseOverlay');
+      const finalScoreView = document.getElementById('finalScore');
+
+      const startBtn = document.getElementById('startBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const resumeBtn = document.getElementById('resumeBtn');
+      const muteBtn = document.getElementById('muteBtn');
+      const muteBtn2 = document.getElementById('muteBtn2');
+      const pauseChip = document.getElementById('pauseChip');
+
+      const mobileControls = document.getElementById('mobileControls');
+      const state = {
+        mode: 'start', // start, playing, paused, gameover
+        width: 0,
+        height: 0,
+        time: 0,
+        score: 0,
+        best: Number(localStorage.getItem('neonDriftBest') || 0),
+        health: 100,
+        enemies: [],
+        orbs: [],
+        particles: [],
+        stars: [],
+        keys: new Set(),
+        touchDir: { up: false, down: false, left: false, right: false },
+        enemySpawnTimer: 0,
+        orbSpawnTimer: 0,
+        hitFlash: 0,
+        isMuted: false,
+      };
+
+      const player = {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        radius: 13,
+        maxSpeed: 320,
+        accel: 1000,
+        drag: 6.8,
+        angle: 0,
+        trailTimer: 0,
+        invulnTimer: 0,
+      };
+
+      bestView.textContent = `Best: ${state.best}`;
+
+      function resize() {
+        state.width = window.innerWidth;
+        state.height = window.innerHeight;
+        canvas.width = Math.floor(state.width * dpr);
+        canvas.height = Math.floor(state.height * dpr);
+        canvas.style.width = `${state.width}px`;
+        canvas.style.height = `${state.height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (!state.stars.length || state.mode === 'start') {
+          state.stars = Array.from({ length: Math.floor((state.width * state.height) / 5200) }, () => ({
+            x: Math.random() * state.width,
+            y: Math.random() * state.height,
+            r: Math.random() * 1.4 + 0.3,
+            a: Math.random() * 0.5 + 0.2,
+          }));
+        }
+      }
+
+      function resetRun() {
+        state.mode = 'playing';
+        state.time = 0;
+        state.score = 0;
+        state.health = 100;
+        state.enemies = [];
+        state.orbs = [];
+        state.particles = [];
+        state.enemySpawnTimer = 0;
+        state.orbSpawnTimer = 1.5;
+        state.hitFlash = 0;
+
+        player.x = state.width / 2;
+        player.y = state.height / 2;
+        player.vx = 0;
+        player.vy = 0;
+        player.angle = -Math.PI / 2;
+        player.invulnTimer = 0;
+        player.trailTimer = 0;
+
+        startOverlay.classList.add('hidden');
+        gameOverOverlay.classList.add('hidden');
+        pauseOverlay.classList.add('hidden');
+      }
+
+      function easeOutExpo(t) {
+        return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      }
+
+      function spawnEnemy(intensity = 1) {
+        const edge = Math.floor(Math.random() * 4);
+        let x, y;
+        const margin = 30;
+        if (edge === 0) { x = -margin; y = Math.random() * state.height; }
+        else if (edge === 1) { x = state.width + margin; y = Math.random() * state.height; }
+        else if (edge === 2) { x = Math.random() * state.width; y = -margin; }
+        else { x = Math.random() * state.width; y = state.height + margin; }
+
+        const size = Math.random() * 10 + 10;
+        const speed = (65 + Math.random() * 45) * intensity;
+        state.enemies.push({ x, y, radius: size, speed, pulse: Math.random() * Math.PI * 2, hp: 1 });
+      }
+
+      function spawnOrb() {
+        const pad = 40;
+        state.orbs.push({
+          x: pad + Math.random() * (state.width - pad * 2),
+          y: pad + Math.random() * (state.height - pad * 2),
+          radius: 8 + Math.random() * 4,
+          spin: Math.random() * Math.PI * 2,
+          life: 9 + Math.random() * 6,
+          value: 35 + Math.floor(Math.random() * 35),
+        });
+      }
+
+      function spawnParticles(x, y, color, count, speed = 180) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const m = speed * (0.3 + Math.random() * 0.9);
+          state.particles.push({
+            x, y,
+            vx: Math.cos(a) * m,
+            vy: Math.sin(a) * m,
+            life: 0.5 + Math.random() * 0.6,
+            ttl: 0.5 + Math.random() * 0.6,
+            size: 1.8 + Math.random() * 3,
+            color,
+          });
+        }
+      }
+
+      class Sfx {
+        constructor() {
+          this.ctx = null;
+        }
+        ensureCtx() {
+          if (!this.ctx) {
+            const A = window.AudioContext || window.webkitAudioContext;
+            if (A) this.ctx = new A();
+          }
+          return this.ctx;
+        }
+        beep(type, freq, dur, gain = 0.04, slide = 0) {
+          if (state.isMuted) return;
+          const ac = this.ensureCtx();
+          if (!ac) return;
+          const now = ac.currentTime;
+          const osc = ac.createOscillator();
+          const g = ac.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), now + dur);
+          g.gain.setValueAtTime(gain, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+          osc.connect(g);
+          g.connect(ac.destination);
+          osc.start(now);
+          osc.stop(now + dur);
+        }
+        thruster() { this.beep('sawtooth', 140, 0.06, 0.02, -40); }
+        pickup() { this.beep('triangle', 520, 0.11, 0.05, 260); }
+        hit() { this.beep('square', 160, 0.14, 0.06, -100); }
+        gameOver() {
+          this.beep('square', 220, 0.2, 0.05, -100);
+          setTimeout(() => this.beep('triangle', 160, 0.24, 0.05, -70), 120);
+        }
+      }
+      const sfx = new Sfx();
+
+      function setMuteUI() {
+        const label = `Mute: ${state.isMuted ? 'On' : 'Off'}`;
+        muteBtn.textContent = label;
+        muteBtn2.textContent = label;
+      }
+
+      function togglePause() {
+        if (state.mode === 'playing') {
+          state.mode = 'paused';
+          pauseOverlay.classList.remove('hidden');
+        } else if (state.mode === 'paused') {
+          state.mode = 'playing';
+          pauseOverlay.classList.add('hidden');
+        }
+      }
+
+      function gameOver() {
+        state.mode = 'gameover';
+        finalScoreView.textContent = `Final Score: ${Math.floor(state.score)}`;
+        gameOverOverlay.classList.remove('hidden');
+        if (state.score > state.best) {
+          state.best = Math.floor(state.score);
+          localStorage.setItem('neonDriftBest', String(state.best));
+        }
+        bestView.textContent = `Best: ${state.best}`;
+        sfx.gameOver();
+      }
+
+      function update(dt) {
+        if (state.mode !== 'playing') return;
+
+        state.time += dt;
+        state.score += dt * 7.5;
+        state.hitFlash = Math.max(0, state.hitFlash - dt * 2.2);
+
+        const intensity = 1 + Math.min(2.2, state.time / 32 + state.score / 1800);
+        state.enemySpawnTimer -= dt;
+        const spawnEvery = Math.max(0.26, 1.18 / intensity);
+        while (state.enemySpawnTimer <= 0) {
+          spawnEnemy(intensity);
+          state.enemySpawnTimer += spawnEvery;
+        }
+
+        state.orbSpawnTimer -= dt;
+        if (state.orbSpawnTimer <= 0) {
+          if (state.orbs.length < 4) spawnOrb();
+          state.orbSpawnTimer = 3.3 + Math.random() * 2.4;
+        }
+
+        let ax = 0;
+        let ay = 0;
+        const left = state.keys.has('arrowleft') || state.keys.has('a') || state.touchDir.left;
+        const right = state.keys.has('arrowright') || state.keys.has('d') || state.touchDir.right;
+        const up = state.keys.has('arrowup') || state.keys.has('w') || state.touchDir.up;
+        const down = state.keys.has('arrowdown') || state.keys.has('s') || state.touchDir.down;
+
+        if (left) ax -= 1;
+        if (right) ax += 1;
+        if (up) ay -= 1;
+        if (down) ay += 1;
+
+        if (ax || ay) {
+          const len = Math.hypot(ax, ay) || 1;
+          ax /= len;
+          ay /= len;
+          player.vx += ax * player.accel * dt;
+          player.vy += ay * player.accel * dt;
+
+          player.trailTimer -= dt;
+          if (player.trailTimer <= 0) {
+            spawnParticles(player.x, player.y, '#31f9ff', 2, 90);
+            player.trailTimer = 0.045;
+          }
+          if (Math.random() < 0.04) sfx.thruster();
+        }
+
+        const dragFactor = Math.exp(-player.drag * dt);
+        player.vx *= dragFactor;
+        player.vy *= dragFactor;
+
+        const spd = Math.hypot(player.vx, player.vy);
+        if (spd > player.maxSpeed) {
+          const scale = player.maxSpeed / spd;
+          player.vx *= scale;
+          player.vy *= scale;
+        }
+
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+        player.x = Math.max(player.radius, Math.min(state.width - player.radius, player.x));
+        player.y = Math.max(player.radius, Math.min(state.height - player.radius, player.y));
+
+        if (spd > 4) player.angle = Math.atan2(player.vy, player.vx);
+
+        player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+
+        for (let i = state.enemies.length - 1; i >= 0; i--) {
+          const e = state.enemies[i];
+          const dx = player.x - e.x;
+          const dy = player.y - e.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          e.x += (dx / dist) * e.speed * dt;
+          e.y += (dy / dist) * e.speed * dt;
+          e.pulse += dt * 4;
+
+          const collideDist = player.radius + e.radius;
+          if (dist < collideDist && player.invulnTimer <= 0) {
+            state.health = Math.max(0, state.health - (8 + intensity * 2.4));
+            player.invulnTimer = 0.36;
+            state.hitFlash = 1;
+            spawnParticles((player.x + e.x) / 2, (player.y + e.y) / 2, '#ff5d6e', 26, 260);
+            sfx.hit();
+            const knock = 180;
+            player.vx += (dx / dist) * knock * -0.45;
+            player.vy += (dy / dist) * knock * -0.45;
+            if (state.health <= 0) {
+              gameOver();
+              return;
+            }
+          }
+        }
+
+        for (let i = state.orbs.length - 1; i >= 0; i--) {
+          const o = state.orbs[i];
+          o.spin += dt * 5;
+          o.life -= dt;
+          if (o.life <= 0) {
+            state.orbs.splice(i, 1);
+            continue;
+          }
+          const dx = player.x - o.x;
+          const dy = player.y - o.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < player.radius + o.radius + 3) {
+            state.score += o.value;
+            state.orbs.splice(i, 1);
+            spawnParticles(o.x, o.y, '#8dff6a', 20, 240);
+            sfx.pickup();
+          }
+        }
+
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.life -= dt;
+          if (p.life <= 0) {
+            state.particles.splice(i, 1);
+            continue;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.97;
+          p.vy *= 0.97;
+        }
+
+        scoreView.textContent = `Score: ${Math.floor(state.score)}`;
+        healthView.textContent = `Health: ${Math.max(0, Math.floor(state.health))}`;
+      }
+
+      function drawGrid() {
+        const spacing = 40;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(40, 108, 145, 0.12)';
+        ctx.lineWidth = 1;
+        for (let x = (state.time * 14) % spacing; x < state.width; x += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, state.height);
+          ctx.stroke();
+        }
+        for (let y = (state.time * 14) % spacing; y < state.height; y += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(state.width, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, state.width, state.height);
+
+        const g = ctx.createRadialGradient(state.width * 0.5, state.height * 0.42, 10, state.width * 0.5, state.height * 0.5, Math.max(state.width, state.height));
+        g.addColorStop(0, 'rgba(20, 36, 64, 0.2)');
+        g.addColorStop(1, 'rgba(2, 3, 9, 0.92)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, state.width, state.height);
+
+        for (const s of state.stars) {
+          const twinkle = 0.75 + Math.sin(state.time * 1.3 + s.x * 0.01 + s.y * 0.02) * 0.25;
+          ctx.fillStyle = `rgba(160,220,255,${s.a * twinkle})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        drawGrid();
+
+        for (const o of state.orbs) {
+          const pulse = 1 + Math.sin(o.spin) * 0.25;
+          const r = o.radius * pulse;
+          ctx.save();
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = '#8dff6a';
+          ctx.fillStyle = 'rgba(141,255,106,0.94)';
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(214,255,202,0.85)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, r + 4, o.spin, o.spin + Math.PI * 1.25);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (const e of state.enemies) {
+          const pulse = 1 + Math.sin(e.pulse) * 0.1;
+          const rr = e.radius * pulse;
+          ctx.save();
+          ctx.shadowBlur = 22;
+          ctx.shadowColor = '#ff3ef4';
+          ctx.fillStyle = 'rgba(255,62,244,0.18)';
+          ctx.strokeStyle = 'rgba(255,96,246,0.95)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, rr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, rr * 0.45, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,170,252,0.8)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (const p of state.particles) {
+          const t = Math.max(0, p.life / p.ttl);
+          ctx.save();
+          ctx.globalAlpha = easeOutExpo(t) * 0.9;
+          ctx.fillStyle = p.color;
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * t, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        const invBlink = player.invulnTimer > 0 ? (Math.sin(state.time * 35) > 0 ? 0.5 : 1) : 1;
+        ctx.save();
+        ctx.globalAlpha = invBlink;
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle + Math.PI / 2);
+
+        ctx.shadowColor = '#31f9ff';
+        ctx.shadowBlur = 25;
+        ctx.fillStyle = 'rgba(49,249,255,0.2)';
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius * 1.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(49,249,255,0.9)';
+        ctx.strokeStyle = 'rgba(190,251,255,0.95)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, -player.radius - 4);
+        ctx.lineTo(player.radius * 0.7, player.radius + 3);
+        ctx.lineTo(0, player.radius * 0.45);
+        ctx.lineTo(-player.radius * 0.7, player.radius + 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        const thrust = Math.min(1, Math.hypot(player.vx, player.vy) / player.maxSpeed);
+        if (thrust > 0.05) {
+          ctx.fillStyle = `rgba(255,130,240,${0.3 + thrust * 0.5})`;
+          ctx.beginPath();
+          ctx.moveTo(-4, player.radius * 0.95);
+          ctx.lineTo(0, player.radius + 8 + thrust * 16 * (0.8 + Math.random() * 0.2));
+          ctx.lineTo(4, player.radius * 0.95);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.restore();
+
+        if (state.hitFlash > 0) {
+          ctx.fillStyle = `rgba(255,90,110,${state.hitFlash * 0.17})`;
+          ctx.fillRect(0, 0, state.width, state.height);
+        }
+      }
+
+      let last = performance.now();
+      function loop(now) {
+        const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000));
+        last = now;
+        update(dt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      function setKey(code, isDown) {
+        const k = code.toLowerCase();
+        if (isDown) state.keys.add(k);
+        else state.keys.delete(k);
+      }
+
+      window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "p", " "].includes(k)) {
+          e.preventDefault();
+        }
+        if (k === 'p' && (state.mode === 'playing' || state.mode === 'paused')) {
+          togglePause();
+          return;
+        }
+        if (k === ' ' && (state.mode === 'start' || state.mode === 'gameover')) {
+          resetRun();
+          return;
+        }
+        setKey(e.key, true);
+      }, { passive: false });
+
+      window.addEventListener('keyup', (e) => setKey(e.key, false));
+
+      function bindTouchControl() {
+        for (const btn of mobileControls.querySelectorAll('button')) {
+          const dir = btn.dataset.dir;
+          const activate = (value, ev) => {
+            ev.preventDefault();
+            state.touchDir[dir] = value;
+          };
+          btn.addEventListener('pointerdown', (ev) => activate(true, ev));
+          btn.addEventListener('pointerup', (ev) => activate(false, ev));
+          btn.addEventListener('pointercancel', (ev) => activate(false, ev));
+          btn.addEventListener('pointerleave', (ev) => activate(false, ev));
+        }
+      }
+
+      [muteBtn, muteBtn2].forEach((b) => b.addEventListener('click', () => {
+        state.isMuted = !state.isMuted;
+        setMuteUI();
+      }));
+
+      startBtn.addEventListener('click', () => resetRun());
+      restartBtn.addEventListener('click', () => resetRun());
+      resumeBtn.addEventListener('click', () => togglePause());
+      pauseChip.addEventListener('click', () => {
+        if (state.mode === 'playing' || state.mode === 'paused') togglePause();
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && state.mode === 'playing') {
+          togglePause();
+        }
+      });
+
+      window.addEventListener('resize', resize);
+      window.addEventListener('orientationchange', resize);
+
+      document.body.addEventListener('touchmove', (e) => {
+        if (state.mode === 'playing') e.preventDefault();
+      }, { passive: false });
+
+      bindTouchControl();
+      setMuteUI();
+      resize();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
